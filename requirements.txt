@@ -1,0 +1,10 @@
+streamlit>=1.30.0
+PyPDF2>=3.0.0
+langchain>=0.1.0
+langchain-text-splitters>=0.0.1
+langchain-huggingface>=0.0.1
+langchain-chroma>=0.1.0
+langchain-ollama>=0.1.0
+sentence-transformers>=2.2.0
+codecarbon>=2.3.0
+pandas>=2.0.0
