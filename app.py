@@ -1,12 +1,10 @@
 """
-RAG Application - Fase 4: Versione finale con monitoraggio emissioni CO2.
-
-Questo script Streamlit permette di:
-1. Caricare uno o più file PDF tramite la sidebar.
+Questo script Streamlit permette di (forse):
+1. Caricare uno o più file PDF
 2. Estrarre il testo da ciascun PDF utilizzando PyPDF2.
-3. Suddividere il testo estratto in chunk (RecursiveCharacterTextSplitter).
-4. Generare embeddings con HuggingFace (all-MiniLM-L6-v2).
-5. Memorizzare i chunk in un vector store Chroma persistente su disco.
+3. Suddividere il testo estratto in chunk (dato visualizzato)
+4. Generare embeddings (all-MiniLM-L6-v2)
+5. Memorizzare i chunk in un vector store Chroma persistente (su disco)
 6. Ricevere domande dall'utente via chat e rispondere usando un LLM
    locale (Ollama) con contesto estratto dal vector store.
 7. Monitorare le emissioni di CO2 con CodeCarbon durante le operazioni
@@ -14,17 +12,13 @@ Questo script Streamlit permette di:
 8. Mostrare una dashboard delle emissioni nella sidebar.
 """
 
+#NOTA PERSONALE ENV "LLM"
 import sys
 import os
 
-# ──────────────────────────────────────────────
-# Workaround: PyTorch è installato in C:\torch_tmp a causa
-# della limitazione Windows Long Path. Aggiungiamo il percorso
-# al sys.path per renderlo importabile.
-# ──────────────────────────────────────────────
-_torch_path = r"C:\torch_tmp"
-if os.path.isdir(_torch_path) and _torch_path not in sys.path:
-    sys.path.insert(0, _torch_path)
+#_torch_path = r"C:\torch_tmp"
+#if os.path.isdir(_torch_path) and _torch_path not in sys.path:
+#    sys.path.insert(0, _torch_path)
 
 import streamlit as st
 import pandas as pd
@@ -39,58 +33,47 @@ from langchain_core.output_parsers import StrOutputParser
 from codecarbon import EmissionsTracker
 
 
-# ──────────────────────────────────────────────
-# Costanti
-# ──────────────────────────────────────────────
 CHROMA_PERSIST_DIR = "./chroma_db"
 EMISSIONS_CSV = "emissions.csv"
 
-
-# ──────────────────────────────────────────────
 # Configurazione della pagina Streamlit
-# ──────────────────────────────────────────────
 st.set_page_config(
-    page_title="RAG App – Versione Finale",
+    page_title="RAG App",
     page_icon="📄",
     layout="wide",
 )
 
-# ──────────────────────────────────────────────
-# Inizializzazione dello stato della sessione
-# ──────────────────────────────────────────────
+# Inizializzazione della sessione
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 
-# ──────────────────────────────────────────────
-# Titolo principale
-# ──────────────────────────────────────────────
-st.title("📄 RAG Application – Versione Finale")
+#titolo
+st.title("RAG Application – Versione Finale")
 st.markdown(
     "Carica uno o più documenti **PDF** dalla sidebar, poi fai domande "
     "nella chat per ottenere risposte basate sul contenuto dei documenti."
 )
 
 
-# ══════════════════════════════════════════════
+
 # SIDEBAR
-# ══════════════════════════════════════════════
 with st.sidebar:
-    # ── Upload dei PDF ──
+    #  Upload  PDF 
     st.header("📁 Carica i tuoi PDF")
     uploaded_files = st.file_uploader(
         "Seleziona uno o più file PDF",
         type=["pdf"],
         accept_multiple_files=True,
-        help="Puoi caricare più file contemporaneamente.",
+        help="Puoi caricare più file contemporaneamente",
     )
 
     st.divider()
 
-    # ── Configurazione del modello Ollama ──
-    st.header("🤖 Configurazione LLM")
-    st.caption("Richiede [Ollama](https://ollama.com) in esecuzione locale.")
+    # Configurazione LLM (Ollama)
+    st.header("Configurazione LLM")
+    st.caption("Richiede [Ollama](http://localhost:11434) in esecuzione locale.")
     ollama_model = st.text_input(
         "Modello Ollama",
         value="llama3",
@@ -111,14 +94,8 @@ with st.sidebar:
     )
 
 
-# ══════════════════════════════════════════════
-# FUNZIONI HELPER
-# ══════════════════════════════════════════════
 
-
-# ──────────────────────────────────────────────
-# Funzione: estrazione del testo da un singolo PDF
-# ──────────────────────────────────────────────
+# estrazione del testo da PDF
 def extract_text_from_pdf(pdf_file) -> str:
     """
     Legge un file PDF caricato tramite Streamlit e ne restituisce
@@ -133,17 +110,13 @@ def extract_text_from_pdf(pdf_file) -> str:
     return text
 
 
-# ──────────────────────────────────────────────
-# Funzione: chunking del testo con LangChain
-# ──────────────────────────────────────────────
+
+#chunking del testo 
 def split_text_into_chunks(
     text: str,
     chunk_size: int = 1000,
     chunk_overlap: int = 200,
 ) -> list[str]:
-    """
-    Suddivide il testo in chunk utilizzando RecursiveCharacterTextSplitter.
-    """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
@@ -152,16 +125,10 @@ def split_text_into_chunks(
     return splitter.split_text(text)
 
 
-# ──────────────────────────────────────────────
-# Funzione: creazione del modello di embedding
-# ──────────────────────────────────────────────
-@st.cache_resource(show_spinner=False)
+
+# embedding
+@st.cache_resource(show_spinner=False) #Cached per evitare ricaricamenti ad ogni rerun.
 def get_embedding_model():
-    """
-    Carica e restituisce il modello di embedding HuggingFace.
-    Utilizza all-MiniLM-L6-v2 (384 dimensioni).
-    Cached per evitare ricaricamenti ad ogni rerun.
-    """
     return HuggingFaceEmbeddings(
         model_name="all-MiniLM-L6-v2",
         model_kwargs={"device": "cpu"},
@@ -169,14 +136,9 @@ def get_embedding_model():
     )
 
 
-# ──────────────────────────────────────────────
-# Funzione: creazione del vector store Chroma
-# ──────────────────────────────────────────────
+
+# vector store Chroma
 def create_vector_store(chunks: list[str], embeddings) -> Chroma:
-    """
-    Crea un vector store Chroma persistente su disco a partire
-    dai chunk di testo e dal modello di embedding fornito.
-    """
     return Chroma.from_texts(
         texts=chunks,
         embedding=embeddings,
@@ -185,17 +147,13 @@ def create_vector_store(chunks: list[str], embeddings) -> Chroma:
     )
 
 
-# ──────────────────────────────────────────────
-# Funzione: creazione della RAG chain con LCEL
-# ──────────────────────────────────────────────
-def build_rag_chain(vector_store: Chroma, model_name: str, base_url: str, temp: float):
+# creazione della RAG usando LangChain Expression Language (LCEL)
+def build_rag_chain(vector_store, model_name, base_url, temp):
     """
-    Costruisce una RAG chain usando LangChain Expression Language (LCEL).
-
     Pipeline:
       1. Il retriever cerca i 4 chunk più simili alla domanda.
       2. Il prompt combina il contesto recuperato con la domanda.
-      3. L'LLM (Ollama) genera la risposta.
+      3. L'LLM genera la risposta.
       4. Lo StrOutputParser estrae il testo della risposta.
     """
     retriever = vector_store.as_retriever(
@@ -211,16 +169,15 @@ def build_rag_chain(vector_store: Chroma, model_name: str, base_url: str, temp: 
 
     prompt = ChatPromptTemplate.from_template(
         """Sei un assistente AI utile e preciso. Rispondi alla domanda
-basandoti ESCLUSIVAMENTE sul contesto fornito di seguito.
-Se il contesto non contiene informazioni sufficienti per rispondere,
-dillo chiaramente.
+        basandoti ESCLUSIVAMENTE sul contesto fornito di seguito.
+        Se il contesto non contiene informazioni sufficienti per rispondere,
+        dillo chiaramente.
 
-Contesto:
-{context}
+        Contesto: {context}
 
-Domanda: {question}
+        Domanda: {question}
 
-Risposta:"""
+        Risposta:"""
     )
 
     def format_docs(docs):
@@ -236,10 +193,9 @@ Risposta:"""
     return rag_chain
 
 
-# ──────────────────────────────────────────────
-# Funzione: lettura e aggregazione emissioni da CSV
-# ──────────────────────────────────────────────
-def load_emissions_data() -> dict | None:
+
+# estrazione emissioni da CSV
+def load_emissions_data():
     """
     Legge il file emissions.csv generato da CodeCarbon e restituisce
     un dizionario con le metriche aggregate:
@@ -268,15 +224,10 @@ def load_emissions_data() -> dict | None:
         return None
 
 
-# ══════════════════════════════════════════════
-# LOGICA PRINCIPALE
-# ══════════════════════════════════════════════
 
-# ──────────────────────────────────────────────
 # Elaborazione dei PDF caricati
-# ──────────────────────────────────────────────
 if uploaded_files:
-    with st.spinner("⏳ Elaborazione dei PDF in corso..."):
+    with st.spinner("Elaborazione dei PDF in corso..."):
         all_text = ""
         file_info = []
 
@@ -294,10 +245,10 @@ if uploaded_files:
         chunks = split_text_into_chunks(all_text)
 
     # ── Embedding + Vector Store CON tracking CodeCarbon ──
-    with st.spinner("🔄 Embedding e creazione Vector Store (tracking CO2 attivo)..."):
+    with st.spinner("Embedding e creazione Vector Store (tracking CO2 attivo)..."):
         embedding_model = get_embedding_model()
 
-        # Avvia il tracker CodeCarbon per l'embedding
+        # tracker CodeCarbon per l'embedding
         tracker = EmissionsTracker(
             project_name="rag_streamlit",
             measure_power_secs=10,
@@ -309,27 +260,25 @@ if uploaded_files:
 
         st.session_state.vector_store = create_vector_store(chunks, embedding_model)
 
-        # Ferma il tracker al termine dell'embedding
         tracker.stop_task()
         tracker.stop()
 
     # ── Riepilogo elaborazione nella sidebar ──
     with st.sidebar:
         st.divider()
-        st.subheader("📊 Stato elaborazione")
+        st.subheader("Stato elaborazione")
         for info in file_info:
             st.write(
-                f"📄 **{info['name']}** — "
+                f" **{info['name']}** — "
                 f"{info['chars']} car., {info['pages']} pag."
             )
-        st.success(f"✅ **{len(chunks)} chunk** nel Vector Store")
+        st.success(f" **{len(chunks)} chunk** nel Vector Store")
 
 else:
-    st.info("👈 Carica uno o più file PDF dalla sidebar per iniziare.")
+    st.info(" Carica uno o più file PDF dalla sidebar per iniziare.")
 
-# ──────────────────────────────────────────────
+
 # Interfaccia Chat
-# ──────────────────────────────────────────────
 if st.session_state.vector_store is not None:
     st.divider()
     st.subheader("💬 Chatta con i tuoi documenti")
@@ -399,9 +348,8 @@ if st.session_state.vector_store is not None:
                     st.error(error_msg)
 
 
-# ══════════════════════════════════════════════
+
 # DASHBOARD EMISSIONI (Sidebar)
-# ══════════════════════════════════════════════
 with st.sidebar:
     st.divider()
     st.header("🌱 Dashboard Emissioni")
