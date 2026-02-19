@@ -63,13 +63,11 @@ st.markdown(
 with st.sidebar:
     #  Upload  PDF 
     st.header("📁 Carica i tuoi PDF")
-    uploaded_files = st.file_uploader(
-        "Seleziona uno o più file PDF",
-        type=["pdf"],
-        accept_multiple_files=True,
-        help="Puoi caricare più file contemporaneamente",
-    )
+    uploaded_files = st.file_uploader("Seleziona uno o più file PDF", type=["pdf"], accept_multiple_files=True)
 
+    #bottone
+    process_btn = st.button("Elabora Documenti", type="primary")
+    
     st.divider()
 
     # Configurazione LLM (Ollama)
@@ -160,9 +158,9 @@ def build_rag_chain(vector_store, model_name, base_url, temp):
         model=model_name,
         base_url=base_url,
         temperature=temp,
-        client_kwargs={
-            "transport": httpx.HTTPTransport(local_address="0.0.0.0"),
-        },
+        # client_kwargs={
+        #     "transport": httpx.HTTPTransport(local_address="0.0.0.0"),
+        # },
     )
 
     prompt = ChatPromptTemplate.from_template(
@@ -223,56 +221,52 @@ def load_emissions_data():
 
 
 # Elaborazione dei PDF caricati
-if uploaded_files:
+if uploaded_files and process_btn:
     with st.spinner("Elaborazione dei PDF in corso..."):
         all_text = ""
         file_info = []
 
-        for pdf_file in uploaded_files:
+    for pdf_file in uploaded_files:
+
             text = extract_text_from_pdf(pdf_file)
+
             all_text += text
+
             file_info.append(
+
                 {
+
                     "name": pdf_file.name,
+
                     "chars": len(text),
+
                     "pages": len(PdfReader(pdf_file).pages),
+
                 }
+
             )
 
-        chunks = split_text_into_chunks(all_text)
+
+    chunks = split_text_into_chunks(all_text) 
 
     # ── Embedding + Vector Store CON tracking CodeCarbon ──
     with st.spinner("Embedding e creazione Vector Store"):
         embedding_model = get_embedding_model()
 
-        # tracker CodeCarbon per l'embedding
+        # Inizializza il tracker CodeCarbon (embedding)
         tracker = EmissionsTracker(
-            project_name="rag_streamlit",
+            project_name="rag_streamlit_embedding", 
             measure_power_secs=10,
             save_to_file=True,
             output_file=EMISSIONS_CSV,
-            log_level="warning",       # pulizia dei warning
+            log_level="error", # migliorara la pulizia
         )
-        tracker.start_task("embedding_vectorstore")
+        tracker.start()
 
+        # Salva in session_state per non perderlo ai successivi rerun
         st.session_state.vector_store = create_vector_store(chunks, embedding_model)
 
-        tracker.stop_task()
         tracker.stop()
-
-    # ── Riepilogo elaborazione nella sidebar ──
-    with st.sidebar:
-        st.divider()
-        st.subheader("Stato elaborazione")
-        for info in file_info:
-            st.write(
-                f" **{info['name']}** — "
-                f"{info['chars']} car., {info['pages']} pag."
-            )
-        st.success(f" **{len(chunks)} chunk** nel Vector Store")
-
-else:
-    st.info(" Carica uno o più file PDF dalla sidebar per iniziare.")
 
 
 # Interfaccia Chat
@@ -280,7 +274,7 @@ if st.session_state.vector_store is not None:
     st.divider()
     st.subheader(" Chatta con i tuoi documenti")
 
-    # ── Mostra lo storico dei messaggi ──
+    # ── storico messaggi ──
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
