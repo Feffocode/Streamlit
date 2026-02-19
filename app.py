@@ -50,8 +50,8 @@ if "messages" not in st.session_state:
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 
-#titolo
-st.title("RAG Application – Versione Finale")
+#titolo e descrizione
+st.title("RAG Application")
 st.markdown(
     "Carica uno o più documenti **PDF** dalla sidebar, poi fai domande "
     "nella chat per ottenere risposte basate sul contenuto dei documenti."
@@ -59,7 +59,7 @@ st.markdown(
 
 
 
-# SIDEBAR
+# SIDEBAR PDF + CONFIGURAZIONE LLM + STATE
 with st.sidebar:
     #  Upload  PDF 
     st.header("📁 Carica i tuoi PDF")
@@ -98,10 +98,6 @@ with st.sidebar:
 
 # estrazione del testo da PDF
 def extract_text_from_pdf(pdf_file) -> str:
-    """
-    Legge un file PDF caricato tramite Streamlit e ne restituisce
-    tutto il testo concatenato pagina per pagina.
-    """
     reader = PdfReader(pdf_file)
     text = ""
     for page in reader.pages:
@@ -246,7 +242,7 @@ if uploaded_files:
         chunks = split_text_into_chunks(all_text)
 
     # ── Embedding + Vector Store CON tracking CodeCarbon ──
-    with st.spinner("Embedding e creazione Vector Store..."):
+    with st.spinner("Embedding e creazione Vector Store"):
         embedding_model = get_embedding_model()
 
         # tracker CodeCarbon per l'embedding
@@ -255,7 +251,7 @@ if uploaded_files:
             measure_power_secs=10,
             save_to_file=True,
             output_file=EMISSIONS_CSV,
-            log_level="warning",       # evita log verbosi nella console
+            log_level="warning",       # pulizia dei warning
         )
         tracker.start_task("embedding_vectorstore")
 
@@ -402,7 +398,7 @@ with st.sidebar:
             df = pd.read_csv(EMISSIONS_CSV)
             st.dataframe(
                 df[["timestamp", "project_name", "emissions", "energy_consumed", "duration"]],
-                use_container_width=True,
+                width=True,
             )
     else:
         st.caption(
