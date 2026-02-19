@@ -110,7 +110,6 @@ def extract_text_from_pdf(pdf_file) -> str:
     return text
 
 
-
 #chunking del testo 
 def split_text_into_chunks(
     text: str,
@@ -123,7 +122,6 @@ def split_text_into_chunks(
         length_function=len,
     )
     return splitter.split_text(text)
-
 
 
 # embedding
@@ -224,7 +222,6 @@ def load_emissions_data():
         return None
 
 
-
 # Elaborazione dei PDF caricati
 if uploaded_files:
     with st.spinner("Elaborazione dei PDF in corso..."):
@@ -281,7 +278,7 @@ else:
 # Interfaccia Chat
 if st.session_state.vector_store is not None:
     st.divider()
-    st.subheader("💬 Chatta con i tuoi documenti")
+    st.subheader(" Chatta con i tuoi documenti")
 
     # ── Mostra lo storico dei messaggi ──
     for message in st.session_state.messages:
@@ -289,7 +286,7 @@ if st.session_state.vector_store is not None:
             st.markdown(message["content"])
 
     # ── Input utente ──
-    if user_question := st.chat_input("Fai una domanda sui tuoi PDF..."):
+    if user_question := st.chat_input("Fai una domanda sui tuoi PDF"):
         # Aggiungi la domanda allo storico
         st.session_state.messages.append({"role": "user", "content": user_question})
         with st.chat_message("user"):
@@ -337,7 +334,7 @@ if st.session_state.vector_store is not None:
                         pass
 
                     error_msg = (
-                        f"❌ **Errore nella comunicazione con Ollama.**\n\n"
+                        f" **Errore nella comunicazione con Ollama.**\n\n"
                         f"Assicurati che:\n"
                         f"1. Ollama sia in esecuzione (`ollama serve`)\n"
                         f"2. Il modello **{ollama_model}** sia installato "
@@ -358,9 +355,14 @@ with st.sidebar:
 
     if emissions_data is not None:
         # ── Emissioni totali ──
+        if emissions_data['emissions_kg'] > 1:
+            emissions_value = f"{emissions_data['emissions_kg']:.6f} kg CO₂eq"
+        else:
+            emissions_value = f"{emissions_data['emissions_kg'] * 1000:.3f} g CO₂eq"
+
         st.metric(
-            label="🏭 Emissioni Totali",
-            value=f"{emissions_data['emissions_kg']:.6f} kg CO₂eq",
+            label="Emissioni Totali",
+            value=emissions_value,
             help="Quantità totale di CO2 equivalente emessa.",
         )
 
