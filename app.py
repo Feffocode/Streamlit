@@ -246,7 +246,7 @@ if uploaded_files:
         chunks = split_text_into_chunks(all_text)
 
     # ── Embedding + Vector Store CON tracking CodeCarbon ──
-    with st.spinner("Embedding e creazione Vector Store (tracking CO2 attivo)..."):
+    with st.spinner("Embedding e creazione Vector Store..."):
         embedding_model = get_embedding_model()
 
         # tracker CodeCarbon per l'embedding
@@ -298,7 +298,7 @@ if st.session_state.vector_store is not None:
 
         # ── Genera la risposta con la RAG chain + tracking CO2 ──
         with st.chat_message("assistant"):
-            with st.spinner("🔍 Ricerca e generazione risposta..."):
+            with st.spinner("Ricerca e generazione risposta..."):
                 try:
                     rag_chain = build_rag_chain(
                         vector_store=st.session_state.vector_store,
@@ -375,7 +375,7 @@ with st.sidebar:
 
         # ── Consumo energetico ──
         st.metric(
-            label="⚡ Consumo Energetico",
+            label="Consumo Energetico",
             value=f"{emissions_data['energy_kwh']:.6f} kWh",
             help="Energia totale consumata durante le operazioni.",
         )
@@ -383,7 +383,7 @@ with st.sidebar:
         # ── Durata calcolo ──
         duration_min = emissions_data["duration_s"] / 60
         st.metric(
-            label="⏱️ Durata Calcolo",
+            label="Durata Calcolo",
             value=f"{emissions_data['duration_s']:.1f} s"
             if emissions_data["duration_s"] < 60
             else f"{duration_min:.1f} min",
@@ -392,13 +392,13 @@ with st.sidebar:
 
         # ── Numero esecuzioni tracciate ──
         st.metric(
-            label="📈 Esecuzioni Tracciate",
+            label="Esecuzioni Tracciate",
             value=emissions_data["n_runs"],
             help="Numero totale di operazioni monitorate da CodeCarbon.",
         )
 
-        # ── Link al CSV completo (espandibile) ──
-        with st.expander("📄 Dettagli CSV completo"):
+        # ── CSV espandibile ──
+        with st.expander("Dettagli CSV completo"):
             df = pd.read_csv(EMISSIONS_CSV)
             st.dataframe(
                 df[["timestamp", "project_name", "emissions", "energy_consumed", "duration"]],
