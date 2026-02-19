@@ -76,8 +76,8 @@ with st.sidebar:
     st.caption("Richiede [Ollama](http://localhost:11434) in esecuzione locale.")
     ollama_model = st.text_input(
         "Modello Ollama",
-        value="llama3",
-        help="Nome del modello Ollama da usare (es. llama3, mistral, phi3).",
+        value="llama3.2",
+        help="Nome del modello Ollama da usare (es. llama3.2, llama3, mistral, phi3).",
     )
     ollama_base_url = st.text_input(
         "Ollama Base URL",
@@ -333,14 +333,17 @@ if st.session_state.vector_store is not None:
                     except Exception:
                         pass
 
+                    error_type = type(e).__name__
                     error_msg = (
-                        f" **Errore nella comunicazione con Ollama.**\n\n"
-                        f"Assicurati che:\n"
+                        f"**Errore durante la generazione della risposta**\n\n"
+                        f"**Tipo:** `{error_type}`\n\n"
+                        f"**Dettaglio:** `{e}`\n\n"
+                        f"---\n"
+                        f"Se è un errore di connessione, assicurati che:\n"
                         f"1. Ollama sia in esecuzione (`ollama serve`)\n"
                         f"2. Il modello **{ollama_model}** sia installato "
                         f"(`ollama pull {ollama_model}`)\n"
-                        f"3. L'URL **{ollama_base_url}** sia corretto\n\n"
-                        f"Dettaglio errore: `{e}`"
+                        f"3. L'URL **{ollama_base_url}** sia corretto"
                     )
                     st.error(error_msg)
 
