@@ -31,6 +31,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from codecarbon import EmissionsTracker
+import httpx
 
 
 CHROMA_PERSIST_DIR = "./chroma_db"
@@ -163,6 +164,9 @@ def build_rag_chain(vector_store, model_name, base_url, temp):
         model=model_name,
         base_url=base_url,
         temperature=temp,
+        client_kwargs={
+            "transport": httpx.HTTPTransport(local_address="0.0.0.0"),
+        },
     )
 
     prompt = ChatPromptTemplate.from_template(
