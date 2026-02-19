@@ -73,7 +73,7 @@ with st.sidebar:
 
     # Configurazione LLM (Ollama)
     st.header("Configurazione LLM")
-    st.caption("Richiede [Ollama](http://localhost:11434) in esecuzione locale.")
+    st.caption("Richiede [Ollama](http://127.0.0.1:11434) in esecuzione locale.")
     ollama_model = st.text_input(
         "Modello Ollama",
         value="llama3.2",
@@ -81,7 +81,7 @@ with st.sidebar:
     )
     ollama_base_url = st.text_input(
         "Ollama Base URL",
-        value="http://localhost:11434",
+        value="http://127.0.0.1:11434",
         help="URL del server Ollama.",
     )
     temperature = st.slider(
